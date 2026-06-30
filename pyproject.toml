@@ -5,7 +5,7 @@ description = "A simple Streamlit app template."
 readme = "README.md"
 dependencies = [
     "streamlit>=1.58.0",
-    "st-gsheets-connection"
+    "st-gsheets-connection",
     "pandas"
 ]
 [tool.poetry.dependencies]
