@@ -125,7 +125,7 @@ def append_log_row( row: dict):
     df = pd.concat([df,pd.DataFrame([row])],ignore_index=True)
     st.cache_data.clear()
     df = conn.update(
-            worksheet="Choi
+            worksheet="Choices",
             data=df,
         )
     st.write(df.shape)
