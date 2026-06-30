@@ -147,8 +147,9 @@ def append_log_row(row: dict):
     LOG_FILE_ID = "1n7Mwe2_qghkPvZ2ElQ6J2p0_dxzf92IE"
     
     # --- STEP 1: Download existing content from Google Drive ---
+    service = get_drive_service()
     try:
-        drive_service = get_drive_service()
+        
         request = service.files().get_media(fileId=LOG_FILE_ID)
         downloaded_bytes = io.BytesIO()
         downloader = MediaIoBaseDownload(downloaded_bytes, request)
