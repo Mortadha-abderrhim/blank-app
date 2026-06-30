@@ -134,11 +134,16 @@ def safe_rerun():
     else:
         st.experimental_rerun()
 
+import csv
+import io
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+from googleapiclient.errors import HttpError
 
 def append_log_row(row: dict):
     """
-    Appends a row to a CSV file hosted on Google Drive.
-    'service' is your authenticated Google Drive API client.
+    Appends a row to a CSV file hosted on Google Drive with explicit 
+    connection, existence, and permission validations.
     """
     fieldnames = [
         "topic", "essay", "history", "prompt", 
@@ -146,10 +151,41 @@ def append_log_row(row: dict):
     ]
     LOG_FILE_ID = "1n7Mwe2_qghkPvZ2ElQ6J2p0_dxzf92IE"
     
-    # --- STEP 1: Download existing content from Google Drive ---
-    service = get_drive_service()
+    # --- STEP 1: Connect to Google Drive ---
     try:
+        service = get_drive_service()
+        if not service:
+            raise ValueError("The 'get_drive_service()' function returned None. Check authentication setup.")
+    except Exception as e:
+        print(f"❌ CONNECTION ERROR: Failed to authenticate or connect to Google Drive API.\nDetails: {e}")
+        return
+
+    # --- STEP 2: Verify File Existence and Permissions ---
+    try:
+        # Fetch file metadata to check capabilities (permissions)
+        metadata = service.files().get(fileId=LOG_FILE_ID, fields="capabilities").execute()
         
+        # Verify if the authenticated account can actually edit this file
+        can_edit = metadata.get("capabilities", {}).get("canEdit", False)
+        if not can_edit:
+            print(f"⚠️ PERMISSION WARNING: File found, but your account does not have permission to modify it.")
+            print("Please check that the file is shared with write/editor access to your service account/email.")
+            return
+            
+    except HttpError as e:
+        if e.resp.status == 404:
+            print(f"❌ FILE NOT FOUND: Could not find file ID '{LOG_FILE_ID}'.")
+            print("Double-check the ID, ensure it isn't deleted, and verify it is shared with your API credentials.")
+        else:
+            print(f"❌ API ERROR while verifying file: Status {e.resp.status} - {e.reason}")
+        return
+    except Exception as e:
+        print(f"❌ UNEXPECTED ERROR during file verification: {e}")
+        return
+
+    # --- STEP 3: Download Existing Content ---
+    existing_text = ""
+    try:
         request = service.files().get_media(fileId=LOG_FILE_ID)
         downloaded_bytes = io.BytesIO()
         downloader = MediaIoBaseDownload(downloaded_bytes, request)
@@ -158,43 +194,44 @@ def append_log_row(row: dict):
         while not done:
             status, done = downloader.next_chunk()
             
-        # Move pointer to the beginning of the stream to read it
         downloaded_bytes.seek(0)
-        # Convert bytes to string text format
         existing_text = downloaded_bytes.read().decode('utf-8')
+        print("📥 Successfully downloaded existing log data.")
     
     except Exception as e:
-        # If the file doesn't exist yet or can't be fetched, start fresh
-        existing_text = ""
+        # Since we verified the file exists above, a failure here points to a network glitch
+        print(f"⚠️ DOWNLOAD WARNING: File exists but failed to read its contents. Starting with an empty file. Details: {e}")
 
-    # --- STEP 2: Append the new row in memory ---
-    # We use a string buffer to rebuild/append the CSV data safely
+    # --- STEP 4: Append the New Row in Memory ---
     output_buffer = io.StringIO()
     writer = csv.DictWriter(output_buffer, fieldnames=fieldnames, extrasaction="ignore")
     
     if not existing_text.strip():
-        # File is empty or brand new: write the header first
+        print("📝 CSV appears to be empty or new. Writing headers and first row...")
         writer.writeheader()
         writer.writerow(row)
         final_csv_text = output_buffer.getvalue()
     else:
-        # File already exists: keep original text and append the new row
         writer.writerow(row)
         new_row_text = output_buffer.getvalue()
-        # Clean up line endings to ensure perfect concatenation
         if not existing_text.endswith('\n'):
             existing_text += '\n'
         final_csv_text = existing_text + new_row_text
 
-    # --- STEP 3: Upload the updated CSV back to Google Drive ---
-    # Convert string back into raw bytes for the upload payload
+    # --- STEP 5: Upload Updated Content ---
     final_bytes = io.BytesIO(final_csv_text.encode('utf-8'))
-    media = MediaIoBaseUpload(final_bytes, mimetype='text/csv', resumable=True)
+    media = MediaIoBaseUpload(final_bytes, mimetype='text/csv', resumable=False)
     
-    service.files().update(
-        fileId=LOG_FILE_ID,
-        media_body=media
-    ).execute()
+    try:
+        service.files().update(
+            fileId=LOG_FILE_ID,
+            media_body=media
+        ).execute()
+        print("✅ SUCCESS: Row successfully appended and synced to Google Drive.")
+    except HttpError as e:
+        print(f"❌ UPLOAD FAILED (API Error): Status {e.resp.status} - {e.reason}")
+    except Exception as e:
+        print(f"❌ UPLOAD FAILED (Network/System Error): {e}")
 
 
 def run_pipelines(legacy,new, language: str, writing_type: str, topic: str, essay: str, prompt: str) -> dict:
