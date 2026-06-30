@@ -157,7 +157,7 @@ def append_log_row(row: dict):
         if not service:
             raise ValueError("The 'get_drive_service()' function returned None. Check authentication setup.")
     except Exception as e:
-        print(f"❌ CONNECTION ERROR: Failed to authenticate or connect to Google Drive API.\nDetails: {e}")
+        st.info(f"❌ CONNECTION ERROR: Failed to authenticate or connect to Google Drive API.\nDetails: {e}")
         return
 
     # --- STEP 2: Verify File Existence and Permissions ---
@@ -168,19 +168,19 @@ def append_log_row(row: dict):
         # Verify if the authenticated account can actually edit this file
         can_edit = metadata.get("capabilities", {}).get("canEdit", False)
         if not can_edit:
-            print(f"⚠️ PERMISSION WARNING: File found, but your account does not have permission to modify it.")
-            print("Please check that the file is shared with write/editor access to your service account/email.")
+            st.info(f"⚠️ PERMISSION WARNING: File found, but your account does not have permission to modify it.")
+            st.info("Please check that the file is shared with write/editor access to your service account/email.")
             return
             
     except HttpError as e:
         if e.resp.status == 404:
-            print(f"❌ FILE NOT FOUND: Could not find file ID '{LOG_FILE_ID}'.")
-            print("Double-check the ID, ensure it isn't deleted, and verify it is shared with your API credentials.")
+            st.info(f"❌ FILE NOT FOUND: Could not find file ID '{LOG_FILE_ID}'.")
+            st.info("Double-check the ID, ensure it isn't deleted, and verify it is shared with your API credentials.")
         else:
-            print(f"❌ API ERROR while verifying file: Status {e.resp.status} - {e.reason}")
+            st.info(f"❌ API ERROR while verifying file: Status {e.resp.status} - {e.reason}")
         return
     except Exception as e:
-        print(f"❌ UNEXPECTED ERROR during file verification: {e}")
+        st.info(f"❌ UNEXPECTED ERROR during file verification: {e}")
         return
 
     # --- STEP 3: Download Existing Content ---
@@ -196,18 +196,18 @@ def append_log_row(row: dict):
             
         downloaded_bytes.seek(0)
         existing_text = downloaded_bytes.read().decode('utf-8')
-        print("📥 Successfully downloaded existing log data.")
+        st.info("📥 Successfully downloaded existing log data.")
     
     except Exception as e:
         # Since we verified the file exists above, a failure here points to a network glitch
-        print(f"⚠️ DOWNLOAD WARNING: File exists but failed to read its contents. Starting with an empty file. Details: {e}")
+        st.info(f"⚠️ DOWNLOAD WARNING: File exists but failed to read its contents. Starting with an empty file. Details: {e}")
 
     # --- STEP 4: Append the New Row in Memory ---
     output_buffer = io.StringIO()
     writer = csv.DictWriter(output_buffer, fieldnames=fieldnames, extrasaction="ignore")
     
     if not existing_text.strip():
-        print("📝 CSV appears to be empty or new. Writing headers and first row...")
+        st.info("📝 CSV appears to be empty or new. Writing headers and first row...")
         writer.writeheader()
         writer.writerow(row)
         final_csv_text = output_buffer.getvalue()
@@ -227,11 +227,11 @@ def append_log_row(row: dict):
             fileId=LOG_FILE_ID,
             media_body=media
         ).execute()
-        print("✅ SUCCESS: Row successfully appended and synced to Google Drive.")
+        st.info("✅ SUCCESS: Row successfully appended and synced to Google Drive.")
     except HttpError as e:
-        print(f"❌ UPLOAD FAILED (API Error): Status {e.resp.status} - {e.reason}")
+        st.info(f"❌ UPLOAD FAILED (API Error): Status {e.resp.status} - {e.reason}")
     except Exception as e:
-        print(f"❌ UPLOAD FAILED (Network/System Error): {e}")
+        st.info(f"❌ UPLOAD FAILED (Network/System Error): {e}")
 
 
 def run_pipelines(legacy,new, language: str, writing_type: str, topic: str, essay: str, prompt: str) -> dict:
