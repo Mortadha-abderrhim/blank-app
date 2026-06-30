@@ -118,16 +118,18 @@ def safe_rerun():
 
 
 def append_log_row( row: dict):
+    st.cache_data.clear()
     df = conn.read(
         worksheet="Choices",
     )
     st.write(df.shape)
     df = pd.concat([df,pd.DataFrame([row])],ignore_index=True)
-    st.write(df.shape)
+    st.cache_data.clear()
     df = conn.update(
             worksheet="Choices",
             data=df,
         )
+    st.cache_data.clear()
     st.write(df.shape)
     return df
     
