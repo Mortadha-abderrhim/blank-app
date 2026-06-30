@@ -5,32 +5,16 @@ import csv
 import random
 import io
 import csv
-from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
-
+from streamlit_gsheets import GSheetsConnection
+conn = st.connection("gsheets", type=GSheetsConnection)
 API_KEY = os.environ.get("API_KEY")
 import json
 
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-import streamlit as st
-
-def get_drive_service():
-    """
-    Authenticates with Google Cloud using Streamlit Secrets 
-    and returns an authorized API client session.
-    """
-    # 1. Grab the raw credentials dictionary from your Streamlit App secrets
-    credentials_info = st.secrets["gcp_service_account"]
-    
-    # 2. Convert that dictionary into an official Google OAuth2 Credentials object
-    # The 'scope' tells Google exactly what permissions your app is asking for
-    creds = service_account.Credentials.from_service_account_info(
-        credentials_info, 
-        scopes=["https://www.googleapis.com/auth/drive.file"]
+conn = st.connection("gsheets", type=GSheetsConnection)
+df = conn.read(
+        worksheet="Choices",
     )
-    
-    # 3. Construct and return the 'service' client specifically for the Drive API (version 3)
-    return build('drive', 'v3', credentials=creds)
+st.dataframe(df)
 
 st.set_page_config(layout="wide", page_title="Compare LLM Pipelines")
 
@@ -134,104 +118,14 @@ def safe_rerun():
     else:
         st.experimental_rerun()
 
-import csv
-import io
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
-from googleapiclient.errors import HttpError
+
 
 def append_log_row(row: dict):
     """
     Appends a row to a CSV file hosted on Google Drive with explicit 
     connection, existence, and permission validations.
     """
-    fieldnames = [
-        "topic", "essay", "history", "prompt", 
-        "thinking1", "thinking2", "output1", "output2", "choice"
-    ]
-    LOG_FILE_ID = "1n7Mwe2_qghkPvZ2ElQ6J2p0_dxzf92IE"
     
-    # --- STEP 1: Connect to Google Drive ---
-    try:
-        service = get_drive_service()
-        if not service:
-            raise ValueError("The 'get_drive_service()' function returned None. Check authentication setup.")
-    except Exception as e:
-        st.info(f"❌ CONNECTION ERROR: Failed to authenticate or connect to Google Drive API.\nDetails: {e}")
-        return
-
-    # --- STEP 2: Verify File Existence and Permissions ---
-    try:
-        # Fetch file metadata to check capabilities (permissions)
-        metadata = service.files().get(fileId=LOG_FILE_ID, fields="capabilities").execute()
-        
-        # Verify if the authenticated account can actually edit this file
-        can_edit = metadata.get("capabilities", {}).get("canEdit", False)
-        if not can_edit:
-            st.info(f"⚠️ PERMISSION WARNING: File found, but your account does not have permission to modify it.")
-            st.info("Please check that the file is shared with write/editor access to your service account/email.")
-            return
-            
-    except HttpError as e:
-        if e.resp.status == 404:
-            st.info(f"❌ FILE NOT FOUND: Could not find file ID '{LOG_FILE_ID}'.")
-            st.info("Double-check the ID, ensure it isn't deleted, and verify it is shared with your API credentials.")
-        else:
-            st.info(f"❌ API ERROR while verifying file: Status {e.resp.status} - {e.reason}")
-        return
-    except Exception as e:
-        st.info(f"❌ UNEXPECTED ERROR during file verification: {e}")
-        return
-
-    # --- STEP 3: Download Existing Content ---
-    existing_text = ""
-    try:
-        request = service.files().get_media(fileId=LOG_FILE_ID)
-        downloaded_bytes = io.BytesIO()
-        downloader = MediaIoBaseDownload(downloaded_bytes, request)
-        
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-            
-        downloaded_bytes.seek(0)
-        existing_text = downloaded_bytes.read().decode('utf-8')
-        st.info("📥 Successfully downloaded existing log data.")
-    
-    except Exception as e:
-        # Since we verified the file exists above, a failure here points to a network glitch
-        st.info(f"⚠️ DOWNLOAD WARNING: File exists but failed to read its contents. Starting with an empty file. Details: {e}")
-
-    # --- STEP 4: Append the New Row in Memory ---
-    output_buffer = io.StringIO()
-    writer = csv.DictWriter(output_buffer, fieldnames=fieldnames, extrasaction="ignore")
-    
-    if not existing_text.strip():
-        st.info("📝 CSV appears to be empty or new. Writing headers and first row...")
-        writer.writeheader()
-        writer.writerow(row)
-        final_csv_text = output_buffer.getvalue()
-    else:
-        writer.writerow(row)
-        new_row_text = output_buffer.getvalue()
-        if not existing_text.endswith('\n'):
-            existing_text += '\n'
-        final_csv_text = existing_text + new_row_text
-
-    # --- STEP 5: Upload Updated Content ---
-    final_bytes = io.BytesIO(final_csv_text.encode('utf-8'))
-    media = MediaIoBaseUpload(final_bytes, mimetype='text/csv', resumable=False)
-    
-    try:
-        service.files().update(
-            fileId=LOG_FILE_ID,
-            media_body=media
-        ).execute()
-        st.info("✅ SUCCESS: Row successfully appended and synced to Google Drive.")
-    except HttpError as e:
-        st.info(f"❌ UPLOAD FAILED (API Error): Status {e.resp.status} - {e.reason}")
-    except Exception as e:
-        st.info(f"❌ UPLOAD FAILED (Network/System Error): {e}")
 
 
 def run_pipelines(legacy,new, language: str, writing_type: str, topic: str, essay: str, prompt: str) -> dict:
