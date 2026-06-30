@@ -121,12 +121,14 @@ def append_log_row( row: dict):
     df = conn.read(
         worksheet="Choices",
     )
-
+    st.write(df.shape)
     df = pd.concat([df,pd.DataFrame([row])],ignore_index=True)
+    st.write(df.shape)
     df = conn.update(
             worksheet="Choices",
             data=df,
         )
+    st.write(df.shape)
     return df
     
 
