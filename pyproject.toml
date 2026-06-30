@@ -10,5 +10,5 @@ dependencies = [
     "google-auth"
 ]
 
-[tool.uv]
-package = false
+[tool.poetry]
+package-mode = false
