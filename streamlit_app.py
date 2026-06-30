@@ -122,14 +122,12 @@ def append_log_row( row: dict):
     df = conn.read(
         worksheet="Choices",
     )
-    st.write(df.shape)
     df = pd.concat([df,pd.DataFrame([row])],ignore_index=True)
     st.cache_data.clear()
     df = conn.update(
-            worksheet="Choices",
+            worksheet="Choi
             data=df,
         )
-    st.cache_data.clear()
     st.write(df.shape)
     return df
     
@@ -331,7 +329,6 @@ left_col, right_col = st.columns([1.18, 0.82], gap="large")
 
 # --- Left column: essay workspace ---
 with left_col:
-    st.markdown('<div class="panel">', unsafe_allow_html=True)
     st.markdown('<div class="panel-title">Essay workspace</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="panel-caption">Set the task, then draft and revise your essay here.</div>',
@@ -357,7 +354,6 @@ with left_col:
 
 # --- Right column: chatbot + response preference cards ---
 with right_col:
-    st.markdown('<div class="panel">', unsafe_allow_html=True)
     st.markdown('<div class="panel-title">Tutor chat</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="panel-caption">Ask for feedback, then click the tutor reply you prefer.</div>',
