@@ -117,7 +117,7 @@ def safe_rerun():
 
 
 
-def append_log_row(df, row: dict):
+def append_log_row( row: dict):
     df = conn.read(
         worksheet="Choices",
     )
@@ -403,7 +403,7 @@ with right_col:
                     "output2": pending["output2"],
                     "choice": choice["choice"],
                 }
-                df = append_log_row(df,row)
+                append_log_row(row)
 
                 st.session_state["chat_log"].append({"role": "user", "content": pending["prompt"]})
                 st.session_state["chat_log"].append({"role": "assistant", "content": choice["output"]})
