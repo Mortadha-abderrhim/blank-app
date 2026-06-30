@@ -6,6 +6,7 @@ import random
 import io
 import csv
 from streamlit_gsheets import GSheetsConnection
+import pandas as pd
 conn = st.connection("gsheets", type=GSheetsConnection)
 API_KEY = os.environ.get("API_KEY")
 import json
@@ -13,8 +14,18 @@ import json
 conn = st.connection("gsheets", type=GSheetsConnection)
 df = conn.read(
         worksheet="Choices",
+        usecols=[
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+        ]
     )
-st.dataframe(df)
 
 st.set_page_config(layout="wide", page_title="Compare LLM Pipelines")
 
@@ -121,10 +132,11 @@ def safe_rerun():
 
 
 def append_log_row(row: dict):
-    """
-    Appends a row to a CSV file hosted on Google Drive with explicit 
-    connection, existence, and permission validations.
-    """
+    df = pd.concat([df,pd.DataFrame(row)])
+    df = conn.update(
+            worksheet="Example 1",
+            data=df,
+        )
     
 
 
