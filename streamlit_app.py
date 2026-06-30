@@ -14,17 +14,7 @@ import json
 conn = st.connection("gsheets", type=GSheetsConnection)
 df = conn.read(
         worksheet="Choices",
-        usecols=[
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8
-        ]
+    
     )
 
 st.set_page_config(layout="wide", page_title="Compare LLM Pipelines")
