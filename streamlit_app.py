@@ -132,7 +132,8 @@ def safe_rerun():
 
 
 def append_log_row(df, row: dict):
-    df = pd.concat([df,pd.DataFrame(row)],ignore_index=True)
+    st.write(df.columns)
+    df = pd.concat([df,pd.DataFrame([row])],ignore_index=True)
     df = conn.update(
             worksheet="Example 1",
             data=df,
