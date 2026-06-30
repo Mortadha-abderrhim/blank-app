@@ -14,7 +14,6 @@ import json
 conn = st.connection("gsheets", type=GSheetsConnection)
 df = conn.read(
         worksheet="Choices",
-    
     )
 
 st.set_page_config(layout="wide", page_title="Compare LLM Pipelines")
@@ -122,12 +121,12 @@ def safe_rerun():
 
 
 def append_log_row(df, row: dict):
-    st.write(df.columns)
     df = pd.concat([df,pd.DataFrame([row])],ignore_index=True)
     df = conn.update(
             worksheet="Choices",
             data=df,
         )
+    return df
     
 
 
@@ -403,7 +402,7 @@ with right_col:
                     "output2": pending["output2"],
                     "choice": choice["choice"],
                 }
-                append_log_row(df,row)
+                df = append_log_row(df,row)
 
                 st.session_state["chat_log"].append({"role": "user", "content": pending["prompt"]})
                 st.session_state["chat_log"].append({"role": "assistant", "content": choice["output"]})
